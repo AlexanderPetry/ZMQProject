@@ -6,7 +6,7 @@
 - PUB/SUB
 - Client → PYNQ
 - `note.play?>[frequency] [velocity] [duration]`
-- `note.play?>440 0.8 0.5`
+- `note.play?>52 127 0.5`
 
 ---
 
