@@ -20,24 +20,47 @@ std::string adress2 = "tcp://benternet.pxl-ea-ict.be:24042";
 std::string ladress1 = "tcp://127.0.0.1:24041";
 std::string ladress2 = "tcp://127.0.0.1:24042";
 
+zmq::socket_t* logSocket = nullptr;
+
+void logMessage(const std::string& msg) {
+    std::string formatted = "synth.log!>" + msg;
+    zmq::message_t message(formatted.begin(), formatted.end());
+    logSocket->send(message);
+}
+
 void playNote(int note, float vel, float dur) {
-    std::cout << "Playing note: note=" << note << ", vel=" << vel << ", dur=" << dur << std::endl;
+    std::ostringstream ss;
+    ss << "Playing note: note=" << note << ", vel=" << vel << ", dur=" << dur;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
 }
 
 void playChord(const std::string& chord, float vel, float dur) {
-    std::cout << "Playing chord: " << chord << " vel=" << vel << " dur=" << dur << std::endl;
+    std::ostringstream ss;
+    ss << "Playing chord: " << chord << " vel=" << vel << " dur=" << dur;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
 }
 
 void setInstrument(const std::string& instrument) {
-    std::cout << "Setting instrument: " << instrument << std::endl;
+    std::ostringstream ss;
+    ss << "Setting instrument: " << instrument;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
 }
 
 void setEnvelope(float a, float d, float s, float r) {
-    std::cout << "Setting envelope: A=" << a << " D=" << d << " S=" << s << " R=" << r << std::endl;
+    std::ostringstream ss;
+    ss << "Setting envelope: A=" << a << " D=" << d << " S=" << s << " R=" << r;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
 }
 
 void setVolume(float volume) {
-    std::cout << "Setting volume: " << volume << std::endl;
+    std::ostringstream ss;
+    ss << "Setting volume: " << volume;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
 }
 
 void heartbeat(zmq::context_t& context) {
@@ -46,7 +69,7 @@ void heartbeat(zmq::context_t& context) {
     while (true) {
         std::string msg = "status.reply!>alive";
         zmq::message_t message(msg.begin(), msg.end());
-        sender.send(message);//, zmq::send_flags::none);
+        sender.send(message);
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }
@@ -54,6 +77,9 @@ void heartbeat(zmq::context_t& context) {
 int main() {
     zmq::context_t context(1);
     zmq::socket_t receiver(context, ZMQ_SUB);
+    zmq::socket_t logger(context, local ? ZMQ_PUB : ZMQ_PUSH);
+    if (local) logger.bind(ladress1); else logger.connect(adress1);
+    logSocket = &logger;
 
     if (local) {
         receiver.bind(ladress2);
@@ -80,6 +106,7 @@ int main() {
         receiver.recv(&msg);
         std::string data(static_cast<char*>(msg.data()), msg.size());
         std::cout << "Received: " << data << std::endl;
+        logMessage("Received: " + data);
 
         auto sep = data.find("?>");
         if (sep == std::string::npos) continue;
