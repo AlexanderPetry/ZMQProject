@@ -24,7 +24,11 @@ This project implements a real-time audio synthesizer running on a PYNQ board. I
 
 The service sends `status.reply!>alive` every 5 seconds to confirm it’s still running and responsive.
 
+---
 
+## Example structure
+
+![Example diagram](Content/BenternetSynth.drawio.png)
 
 
 
