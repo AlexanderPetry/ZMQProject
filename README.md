@@ -16,7 +16,7 @@ This project implements a real-time audio synthesizer running on a PYNQ board. I
 
 ## 💬 Message API
 
-(link)[Documentation/API.md]            |
+[API](Documentation/API.md)
 
 ---
 
