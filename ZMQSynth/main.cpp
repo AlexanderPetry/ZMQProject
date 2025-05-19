@@ -6,12 +6,20 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+
+#include <QThread>
+#include <QCoreApplication>
+
+#include "serialconnection.h"
+
 #ifndef _WIN32
 #include <unistd.h>
 #else
 #include <windows.h>
 #define sleep(n)    Sleep(n)
 #endif
+
+SerialConnection *sc;
 
 bool local = 0;
 
@@ -28,40 +36,51 @@ void logMessage(const std::string& msg) {
     logSocket->send(message);
 }
 
-void playNote(int note, float vel, float dur) {
+void playNote(int status, int note, int velocity) {
     std::ostringstream ss;
-    ss << "Playing note: note=" << note << ", vel=" << vel << ", dur=" << dur;
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+
+    if(status == true)
+    {
+        ss << "Note " << note << " down at velocity " << velocity;
+    }
+    else
+    {
+        ss << "Note " << note << " up at velocity " << velocity;
+    }
+
+    data.append(static_cast<char>(status ? 0x90 : 0x80));
+    data.append(static_cast<char>(note));
+    data.append(static_cast<char>(velocity));
+
     std::cout << ss.str() << std::endl;
     logMessage(ss.str());
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
 }
 
-void playChord(const std::string& chord, float vel, float dur) {
+void switchInstrument(int instrument) {
     std::ostringstream ss;
-    ss << "Playing chord: " << chord << " vel=" << vel << " dur=" << dur;
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(instrument));
+
+    ss << instrument;
     std::cout << ss.str() << std::endl;
     logMessage(ss.str());
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
 }
 
-void setInstrument(const std::string& instrument) {
-    std::ostringstream ss;
-    ss << "Setting instrument: " << instrument;
-    std::cout << ss.str() << std::endl;
-    logMessage(ss.str());
-}
-
-void setEnvelope(float a, float d, float s, float r) {
-    std::ostringstream ss;
-    ss << "Setting envelope: A=" << a << " D=" << d << " S=" << s << " R=" << r;
-    std::cout << ss.str() << std::endl;
-    logMessage(ss.str());
-}
-
-void setVolume(float volume) {
-    std::ostringstream ss;
-    ss << "Setting volume: " << volume;
-    std::cout << ss.str() << std::endl;
-    logMessage(ss.str());
-}
 
 void heartbeat(zmq::context_t& context) {
     zmq::socket_t sender(context, local ? ZMQ_PUB : ZMQ_PUSH);
@@ -74,7 +93,9 @@ void heartbeat(zmq::context_t& context) {
     }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    QCoreApplication app(argc, argv);
+
     zmq::context_t context(1);
     zmq::socket_t receiver(context, ZMQ_SUB);
     zmq::socket_t logger(context, local ? ZMQ_PUB : ZMQ_PUSH);
@@ -90,7 +111,7 @@ int main() {
     }
 
     std::vector<std::string> topics = {
-        "note.play?>", "chord.play?>", "instrument.set?>",
+        "note.play?>", "chord.play?>", "instrument.change?>",
         "envelope.set?>", "volume.set?>"
     };
 
@@ -100,6 +121,15 @@ int main() {
 
     std::thread heartbeat_thread(heartbeat, std::ref(context));
     heartbeat_thread.detach();
+
+    QThread* thread = new QThread;
+    sc = new SerialConnection();
+    sc->moveToThread(thread);
+    thread->start();
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->openSerialPort("COM4", 115200);
+    }, Qt::QueuedConnection);
 
     zmq::message_t msg;
     while (true) {
@@ -115,28 +145,16 @@ int main() {
         std::istringstream ss(payload);
 
         if (cmd == "note.play?>") {
-            float f, v, d;
+            int f, v, d;
             ss >> f >> v >> d;
             playNote(f, v, d);
-        } else if (cmd == "chord.play?>") {
-            std::string chord;
-            float v, d;
-            ss >> chord >> v >> d;
-            playChord(chord, v, d);
-        } else if (cmd == "instrument.set?>") {
-            std::string name;
-            ss >> name;
-            setInstrument(name);
-        } else if (cmd == "envelope.set?>") {
-            float a, d, s, r;
-            ss >> a >> d >> s >> r;
-            setEnvelope(a, d, s, r);
-        } else if (cmd == "volume.set?>") {
-            float vol;
-            ss >> vol;
-            setVolume(vol);
+        }
+        else if(cmd == "instrument.change?>") {
+            int d;
+            ss >> d;
+            switchInstrument(d);
         }
     }
 
-    return 0;
+    return app.exec();
 }

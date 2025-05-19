@@ -1,7 +1,11 @@
 TEMPLATE = app
 CONFIG += console c++11
 CONFIG -= app_bundle
-CONFIG -= qt
+CONFIG += qt
+
+QT += core
+QT += gui
+QT += widgets
 
 DEFINES += ZMQ_STATIC
 
@@ -10,3 +14,5 @@ INCLUDEPATH += $$PWD/../include
 
 SOURCES += main.cpp
 
+
+HEADERS +=
