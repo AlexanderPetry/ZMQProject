@@ -1,4 +1,5 @@
 //includes
+#include "pianowindow.h"
 #include <Windows.h>
 #include <iostream>
 #include <zmq.hpp>
@@ -99,8 +100,14 @@ int main(int argc, char **argv) {
     QApplication app(argc, argv);
     init();
 
-    QWidget window;
+    app.setAttribute(Qt::AA_DisableHighDpiScaling); // if needed
+    app.setKeyboardInputInterval(0);
+
+    PianoWindow window;
     QVBoxLayout *mainLayout = new QVBoxLayout(&window);
+
+
+
 
     //custom intrument
     QGroupBox *customGroup = new QGroupBox("Custom Instrument Settings");
@@ -128,6 +135,33 @@ int main(int argc, char **argv) {
     customGroup->setVisible(false); // hidden unless "Custom" is selected
     mainLayout->addWidget(customGroup);
 
+    auto send_custom_settings = [=]() {
+        int waveform = waveformBox->currentIndex();
+        int attack = attackSlider->value();
+        int decay = decaySlider->value();
+        int sustain = sustainSlider->value();
+        int release = releaseSlider->value();
+
+        std::ostringstream ss;
+        ss << "custom.instrument?>"
+           << waveform << " "
+           << attack << " "
+           << decay << " "
+           << sustain << " "
+           << release;
+
+        std::string msg = ss.str();
+        zmq::message_t zmqMsg(msg.begin(), msg.end());
+        publisher.send(zmqMsg);
+        std::cout << "Sent custom settings: " << msg << std::endl;
+    };
+
+    QObject::connect(waveformBox, QOverload<int>::of(&QComboBox::currentIndexChanged), send_custom_settings);
+    QObject::connect(attackSlider, &QSlider::valueChanged, send_custom_settings);
+    QObject::connect(decaySlider, &QSlider::valueChanged, send_custom_settings);
+    QObject::connect(sustainSlider, &QSlider::valueChanged, send_custom_settings);
+    QObject::connect(releaseSlider, &QSlider::valueChanged, send_custom_settings);
+
     // Dropdown for instruments
     QComboBox *instrumentBox = new QComboBox();
     instrumentBox->addItems({"Piano", "Synth", "Organ", "Guitar","Custom"});
@@ -140,11 +174,7 @@ int main(int argc, char **argv) {
                          customGroup->setVisible(index == 4);
                      });
 
-    QLayoutItem *child;
-    while ((child = customLayout->takeAt(0)) != nullptr) {
-        delete child->widget();
-        delete child;
-    }
+
 
     // Volume slider
     QHBoxLayout *volumeLayout = new QHBoxLayout();

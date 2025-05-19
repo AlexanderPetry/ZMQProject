@@ -81,6 +81,37 @@ void switchInstrument(int instrument) {
     }, Qt::QueuedConnection);
 }
 
+void customInstrument(int waveform, int attack, int decay, int sustain, int release) {
+    std::ostringstream ss;
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+
+
+    data.append(static_cast<char>(0x12));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(waveform));
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
+
+    data.append(static_cast<char>(0x15));
+    data.append(static_cast<char>(attack));
+    data.append(static_cast<char>(decay));
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
+
+    data.append(static_cast<char>(0x20));
+    data.append(static_cast<char>(sustain));
+    data.append(static_cast<char>(release));
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
+}
+
 
 void heartbeat(zmq::context_t& context) {
     zmq::socket_t sender(context, local ? ZMQ_PUB : ZMQ_PUSH);
@@ -112,7 +143,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::string> topics = {
         "note.play?>", "chord.play?>", "instrument.change?>",
-        "envelope.set?>", "volume.set?>"
+        "custom.instrument?>", "volume.set?>"
     };
 
     for (const auto& topic : topics) {
@@ -144,15 +175,22 @@ int main(int argc, char *argv[]) {
         std::string payload = data.substr(sep + 2);
         std::istringstream ss(payload);
 
-        if (cmd == "note.play?>") {
+        if (cmd == "note.play?>")
+        {
             int f, v, d;
             ss >> f >> v >> d;
             playNote(f, v, d);
         }
-        else if(cmd == "instrument.change?>") {
+        else if(cmd == "instrument.change?>")
+        {
             int d;
             ss >> d;
             switchInstrument(d);
+        }
+        else if (cmd == "custom.instrument?>")
+        {
+            int w, a, d, s, r;
+            ss >> w >> a >> d >> s >> r;
         }
     }
 
