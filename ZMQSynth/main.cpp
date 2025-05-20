@@ -9,6 +9,7 @@
 
 #include <QThread>
 #include <QCoreApplication>
+#include <QDataStream>
 
 #include "serialconnection.h"
 
