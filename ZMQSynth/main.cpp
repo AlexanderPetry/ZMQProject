@@ -182,14 +182,14 @@ void listSerialPorts()
     QList<QSerialPortInfo> availablePorts = QSerialPortInfo::availablePorts();
 
     if (availablePorts.isEmpty()) {
-        qDebug() << "No serial ports available.";
+        std::cout << "No serial ports available." << std::endl;
     } else {
         qDebug() << "Available serial ports:";
         for (const QSerialPortInfo &port : availablePorts) {
-            qDebug() << "Port name: " << port.portName();
-            qDebug() << "Description: " << port.description();
-            qDebug() << "Manufacturer: " << port.manufacturer();
-            qDebug() << "Serial number: " << port.serialNumber();
+            std::cout << "Port name: " << port.portName().toStdString()<< std::endl;
+            std::cout << "Description: " << port.description().toStdString()<< std::endl;
+            std::cout << "Manufacturer: " << port.manufacturer().toStdString()<< std::endl;
+            std::cout << "Serial number: " << port.serialNumber().toStdString()<< std::endl;
         }
     }
 }
