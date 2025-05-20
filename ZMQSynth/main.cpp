@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
         #if defined(Q_OS_WIN)  // For Windows
                 portName = "COM4";
         #elif defined(Q_OS_LINUX)  // For Linux (e.g., Raspberry Pi)
-                portName = "/dev/ttyUSB0";  // Adjust this based on your setup (ttyUSB1, etc.)
+                portName = "/dev/ttyUSB1";  // Adjust this based on your setup (ttyUSB1, etc.)
         #else
                 portName = "";  // Set a default or handle other platforms
         #endif
