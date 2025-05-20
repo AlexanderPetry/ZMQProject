@@ -87,29 +87,78 @@ void customInstrument(int waveform, int attack, int decay, int sustain, int rele
     QDataStream stream(&data, QIODevice::WriteOnly);
 
 
-    data.append(static_cast<char>(0x12));
-    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(0xB0)); // Valid status
+    data.append(static_cast<char>(0x10)); // Controller number for waveform
     data.append(static_cast<char>(waveform));
 
     QMetaObject::invokeMethod(sc, [=]() {
         sc->writeData(data);
     }, Qt::QueuedConnection);
 
-    data.append(static_cast<char>(0x15));
+    ss << waveform;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
+
+    data.clear();
+    ss.clear();
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x11));
     data.append(static_cast<char>(attack));
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
+
+    ss <<attack << decay;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
+
+    data.clear();
+    ss.clear();
+
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x12));
     data.append(static_cast<char>(decay));
 
     QMetaObject::invokeMethod(sc, [=]() {
         sc->writeData(data);
     }, Qt::QueuedConnection);
 
-    data.append(static_cast<char>(0x20));
+    ss <<attack << decay;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
+
+    data.clear();
+    ss.clear();
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x13));
     data.append(static_cast<char>(sustain));
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
+
+    ss << sustain << release;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
+
+    data.clear();
+    ss.clear();
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x14));
     data.append(static_cast<char>(release));
 
     QMetaObject::invokeMethod(sc, [=]() {
         sc->writeData(data);
     }, Qt::QueuedConnection);
+
+    ss << sustain << release;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
 }
 
 
@@ -191,6 +240,7 @@ int main(int argc, char *argv[]) {
         {
             int w, a, d, s, r;
             ss >> w >> a >> d >> s >> r;
+            customInstrument(w, a, d, s, r);
         }
     }
 
