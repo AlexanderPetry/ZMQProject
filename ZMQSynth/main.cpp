@@ -11,6 +11,7 @@
 #include <QCoreApplication>
 #include <QDataStream>
 #include <QSysInfo>
+#include <QSerialPortInfo>
 
 #include "serialconnection.h"
 
@@ -175,8 +176,28 @@ void heartbeat(zmq::context_t& context) {
     }
 }
 
+void listSerialPorts()
+{
+    // Get a list of available serial ports
+    QList<QSerialPortInfo> availablePorts = QSerialPortInfo::availablePorts();
+
+    if (availablePorts.isEmpty()) {
+        qDebug() << "No serial ports available.";
+    } else {
+        qDebug() << "Available serial ports:";
+        for (const QSerialPortInfo &port : availablePorts) {
+            qDebug() << "Port name: " << port.portName();
+            qDebug() << "Description: " << port.description();
+            qDebug() << "Manufacturer: " << port.manufacturer();
+            qDebug() << "Serial number: " << port.serialNumber();
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
+
+    listSerialPorts();
 
     zmq::context_t context(1);
     zmq::socket_t receiver(context, ZMQ_SUB);

@@ -13,13 +13,12 @@ LIBS += -L$$PWD/../lib -lpthread
 
 unix {
     # Linux-specific settings
-    LIBS += -L$$PWD/zmq/libzmq/src/.libs -lzmq  # Adjust path if necessary
+    LIBS += -L$$PWD/zmq/libzmq/src/.libs -lzmq
 }
 
 win32 {
     # Windows-specific settings
-    LIBS += -L$$PWD/lib -lzmq.lib
-    # If you have the Windows-specific libraries like ws2_32 and Iphlpapi
+    LIBS += -L$$PWD/lib -lzmq
     LIBS += -lws2_32 -lIphlpapi
 }
 
