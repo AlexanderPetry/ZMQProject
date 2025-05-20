@@ -2,7 +2,7 @@
 #define SERIALCONNECTION_H
 
 #include <QByteArray>
-#include <QtTypes>
+//#include <QtTypes>
 #include <QSerialPort>
 #include <QTimer>
 
