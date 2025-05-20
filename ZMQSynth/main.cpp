@@ -10,6 +10,7 @@
 #include <QThread>
 #include <QCoreApplication>
 #include <QDataStream>
+#include <QSysInfo>
 
 #include "serialconnection.h"
 
@@ -208,8 +209,19 @@ int main(int argc, char *argv[]) {
     sc->moveToThread(thread);
     thread->start();
 
-    QMetaObject::invokeMethod(sc, [=]() {
-        sc->openSerialPort("COM4", 115200);
+    QMetaObject::invokeMethod(sc, [=]()
+    {
+        QString portName;
+
+        #if defined(Q_OS_WIN)  // For Windows
+                portName = "COM4";
+        #elif defined(Q_OS_LINUX)  // For Linux (e.g., Raspberry Pi)
+                portName = "/dev/ttyUSB0";  // Adjust this based on your setup (ttyUSB1, etc.)
+        #else
+                portName = "";  // Set a default or handle other platforms
+        #endif
+
+        sc->openSerialPort(portName, 115200);
     }, Qt::QueuedConnection);
 
     zmq::message_t msg;
