@@ -13,7 +13,7 @@ LIBS += -L$$PWD/../lib -lpthread
 
 unix {
     # Linux-specific settings
-    LIBS += -lzmq
+    LIBS += -L$$PWD/src/.libs -lzmq   # Adjust path if necessary
 }
 
 win32 {
