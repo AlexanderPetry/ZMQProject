@@ -12,6 +12,7 @@
 #include <QDataStream>
 #include <QSysInfo>
 #include <QSerialPortInfo>
+#include <QDebug>
 
 #include "serialconnection.h"
 
