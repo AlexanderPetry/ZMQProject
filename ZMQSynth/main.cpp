@@ -85,6 +85,25 @@ void switchInstrument(int instrument) {
     }, Qt::QueuedConnection);
 }
 
+void switchEffect(int effect) {
+    std::ostringstream ss;
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x15));
+    data.append(static_cast<char>(effect));
+
+    ss << effect;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
+}
+
 void customInstrument(int waveform, int attack, int decay, int sustain, int release) {
     std::ostringstream ss;
     QByteArray data;
@@ -215,7 +234,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::vector<std::string> topics = {
-        "note.play?>", "chord.play?>", "instrument.change?>",
+        "note.play?>", "effect.change?>", "instrument.change?>",
         "custom.instrument?>", "volume.set?>"
     };
 
@@ -276,6 +295,12 @@ int main(int argc, char *argv[]) {
             int w, a, d, s, r;
             ss >> w >> a >> d >> s >> r;
             customInstrument(w, a, d, s, r);
+        }
+        else if(cmd == "effect.change?>")
+        {
+            int d;
+            ss >> d;
+            switchEffect(d);
         }
     }
 

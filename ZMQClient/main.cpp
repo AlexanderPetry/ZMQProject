@@ -84,6 +84,18 @@ void switch_instrument(int instrument)
     sleep(1);
 }
 
+void send_effect(int effect)
+{
+    std::ostringstream ss;
+    ss << "effect.change?>" << effect;
+    std::string request = ss.str();
+
+    zmq::message_t msg(request.begin(), request.end());
+    publisher.send(msg);
+    std::cout << "Sent request: " << request << std::endl;
+    sleep(1);
+}
+
 
 void recieve()
 {
@@ -229,6 +241,19 @@ int main(int argc, char **argv) {
     }
 
     mainLayout->addWidget(piano);
+
+    // Effects dropdown
+    QComboBox *effectsBox = new QComboBox();
+    effectsBox->addItems({"None",  "Echo", "Tremolo", "Distortion", "Low pass", "Bitcrush", "Reverb"});
+    mainLayout->addWidget(new QLabel("Effects:"));
+    mainLayout->addWidget(effectsBox);
+
+    QObject::connect(effectsBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+                     [=](int index) {
+                         QString effect = effectsBox->itemText(index);
+                         std::cout << "Effect changed to: " << effect.toStdString() << std::endl;
+                         send_effect(index);
+                     });
 
     window.setWindowTitle("Piano Keys");
     window.show();
