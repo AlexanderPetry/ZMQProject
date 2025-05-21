@@ -22,7 +22,7 @@ jobs:
         qmake  
         make  
 
-    name: Restart service running the app
+    - name: Restart service running the app
       run: |
         sudo systemctl restart myapp.service 
         sudo systemctl status myapp.service
