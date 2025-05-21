@@ -91,8 +91,8 @@ void customInstrument(int waveform, int attack, int decay, int sustain, int rele
     QDataStream stream(&data, QIODevice::WriteOnly);
 
 
-    data.append(static_cast<char>(0xB0)); // Valid status
-    data.append(static_cast<char>(0x10)); // Controller number for waveform
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x10));
     data.append(static_cast<char>(waveform));
 
     QMetaObject::invokeMethod(sc, [=]() {
