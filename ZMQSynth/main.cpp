@@ -263,6 +263,13 @@ int main(int argc, char *argv[]) {
         receiver.recv(&msg);
         std::string data(static_cast<char*>(msg.data()), msg.size());
         std::cout << "Received: " << data << std::endl;
+
+        if (data.find("pynqsynth@synth.log!>") == 0
+            || data.find("pynqsynth@status.reply!>") == 0
+            || data.find("pynqsynth@error.report?>") == 0) {
+            continue;
+        }
+
         logMessage("Received: " + data);
 
         const std::string prefix = "pynqsynth@";
