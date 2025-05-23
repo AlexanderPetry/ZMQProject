@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - dev
+      - dev_working
   workflow_dispatch:
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     - name: Build and Deploy on Raspberry Pi
       run: |
         cd ~/synth/ZMQProject/ZMQSynth 
-        git pull origin dev  
+        git pull origin dev_working 
         make clean  
         qmake  
         make  
