@@ -18,6 +18,13 @@
 #include <QSlider>
 #include <QLabel>
 #include <QGroupBox>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QPlainTextEdit>
+#include <QTimer>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -53,7 +60,7 @@ void init()
         std::cout << "Connected to Benternet at " << adress1 << " and " << adress2 << std::endl;
     }
 
-    receiver.setsockopt(ZMQ_SUBSCRIBE, "readnum!>", 9);
+    receiver.setsockopt(ZMQ_SUBSCRIBE, "pynqsynth@", 10);
     receiver.setsockopt(ZMQ_RCVTIMEO, 3000);
     std::cout << "Subscribed to 'readnum!>'" << std::endl;
 
@@ -155,7 +162,7 @@ int main(int argc, char **argv) {
         int release = releaseSlider->value();
 
         std::ostringstream ss;
-        ss << "custom.instrument?>"
+        ss << "pynqsynth@custom.instrument?>"
            << waveform << " "
            << attack << " "
            << decay << " "
@@ -256,7 +263,66 @@ int main(int argc, char **argv) {
                      });
 
     window.setWindowTitle("Piano Keys");
+
+    // Debug group
+    QGroupBox *debugGroup = new QGroupBox("Debug Console");
+    QVBoxLayout *debugLayout = new QVBoxLayout(debugGroup);
+
+    QLineEdit *inputLine = new QLineEdit();
+    QPushButton *sendButton = new QPushButton("Send");
+    QPlainTextEdit *responseArea = new QPlainTextEdit();
+    responseArea->setReadOnly(true);
+
+    QHBoxLayout *inputLayout = new QHBoxLayout();
+    inputLayout->addWidget(inputLine);
+    inputLayout->addWidget(sendButton);
+
+    debugLayout->addLayout(inputLayout);
+    debugLayout->addWidget(responseArea);
+    mainLayout->addWidget(debugGroup);
+
+    // Send custom text on button click
+    QObject::connect(sendButton, &QPushButton::clicked, [=]() {
+        std::string text = inputLine->text().toStdString();
+        if (text.empty()) return;
+
+        zmq::message_t msg(text.begin(), text.end());
+        publisher.send(msg);
+        responseArea->appendPlainText(QString("Sent: ") + inputLine->text());
+    });
+
+    QTimer *pollTimer = new QTimer(&window);
+    pollTimer->setInterval(100);  // poll every 100 ms
+    pollTimer->setSingleShot(false); // repeat until stopped
+
+    QObject::connect(pollTimer, &QTimer::timeout, [&]() {
+        zmq::message_t reply;
+        while (receiver.recv(&reply)) {
+            std::string response(static_cast<char*>(reply.data()), reply.size());
+            if (response.find("pynqsynth@error.report?>") == 0) {
+                responseArea->appendPlainText(QString("Error: ") + QString::fromStdString(response));
+            }
+        }
+    });
+
+    // On send button click:
+    QObject::connect(sendButton, &QPushButton::clicked, [=]() {
+        std::string text = inputLine->text().toStdString();
+        if (text.empty()) return;
+
+        zmq::message_t msg(text.begin(), text.end());
+        publisher.send(msg);
+        responseArea->appendPlainText(QString("Sent: ") + inputLine->text());
+
+        pollTimer->start();
+
+        // Stop the timer after 3 seconds
+        QTimer::singleShot(3000, pollTimer, &QTimer::stop);
+    });
+
     window.show();
+
+
     return app.exec();
 
 }

@@ -23,7 +23,11 @@ win32 {
 }
 
 SOURCES += main.cpp \
-    serialconnection.cpp
+    heartbeatworker.cpp \
+    serialconnection.cpp \
+    synthservice.cpp
 
 HEADERS += \
-    serialconnection.h
+    heartbeatworker.h \
+    serialconnection.h \
+    synthservice.h
