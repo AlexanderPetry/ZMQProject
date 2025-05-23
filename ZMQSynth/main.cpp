@@ -27,9 +27,6 @@ int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
 
     SynthService service(local);
-
-    std::thread hb(&SynthService::heartbeat, &service);
-    hb.detach();
     service.receiveLoop();
 
     return app.exec();

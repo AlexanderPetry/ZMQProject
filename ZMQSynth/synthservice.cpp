@@ -1,15 +1,15 @@
 #include "synthservice.h"
+#include "heartbeatworker.h"
+#include "qdebug.h"
 #include <thread>
 #include <chrono>
 
-// Constructor
 SynthService::SynthService(bool localMode)
     : local(localMode),
       context(1),
       receiver(context, ZMQ_SUB),
       publisher(context, local ? ZMQ_PUB : ZMQ_PUSH)
 {
-    // Setup sockets (example addresses, adjust as needed)
     if(local) {
         publisher.bind("tcp://127.0.0.1:24041");
         receiver.bind("tcp://127.0.0.1:24042");
@@ -20,6 +20,24 @@ SynthService::SynthService(bool localMode)
     receiver.setsockopt(ZMQ_SUBSCRIBE, "pynqsynth@", 10);
 
     logSocket = &publisher;
+
+    //SynthService service(local);
+
+    QThread* hbThread = new QThread;
+    HeartbeatWorker* hbWorker = new HeartbeatWorker(context, local);
+    hbWorker->moveToThread(hbThread);
+
+    QObject::connect(hbThread, &QThread::started, hbWorker, &HeartbeatWorker::process);
+    QObject::connect(hbWorker, &HeartbeatWorker::finished, hbThread, &QThread::quit);
+    QObject::connect(hbWorker, &HeartbeatWorker::finished, hbWorker, &HeartbeatWorker::deleteLater);
+    QObject::connect(hbThread, &QThread::finished, hbThread, &QThread::deleteLater);
+
+    hbThread->start();
+
+    QThread* thread = new QThread;
+    sc = new SerialConnection();
+    sc->moveToThread(thread);
+    thread->start();
 }
 
 void SynthService::logMessage(const std::string& msg) {
@@ -35,13 +53,20 @@ void SynthService::sendError(const std::string& errMsg) {
 }
 
 void SynthService::playNote(int status, int note, int velocity) {
-    // Your existing playNote implementation
     std::ostringstream ss;
     ss << "Playing note " << note << (status ? " down" : " up") << " at velocity " << velocity;
     std::cout << ss.str() << std::endl;
     logMessage(ss.str());
 
-    // Actual MIDI/serial sending logic here
+    QByteArray data;
+    // Note ON: 0x90, Note OFF: 0x80
+    data.append(static_cast<char>(status ? 0x90 : 0x80));
+    data.append(static_cast<char>(note));
+    data.append(static_cast<char>(velocity));
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
 }
 
 void SynthService::switchInstrument(int instrument) {
@@ -49,7 +74,15 @@ void SynthService::switchInstrument(int instrument) {
     ss << "Switching instrument to " << instrument;
     std::cout << ss.str() << std::endl;
     logMessage(ss.str());
-    // Send to hardware...
+
+    QByteArray data;
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x00));
+    data.append(static_cast<char>(instrument));
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
 }
 
 void SynthService::switchEffect(int effect) {
@@ -57,15 +90,65 @@ void SynthService::switchEffect(int effect) {
     ss << "Switching effect to " << effect;
     std::cout << ss.str() << std::endl;
     logMessage(ss.str());
-    // Send to hardware...
+
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x15));
+    data.append(static_cast<char>(effect));
+
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
 }
 
-void SynthService::customInstrument(int w, int a, int d, int s, int r) {
+void SynthService::customInstrument(int waveform, int attack, int decay, int sustain, int release) {
     std::ostringstream ss;
-    ss << "Custom instrument settings: " << w << " " << a << " " << d << " " << s << " " << r;
+    ss << "Custom instrument settings: waveform=" << waveform
+       << ", attack=" << attack
+       << ", decay=" << decay
+       << ", sustain=" << sustain
+       << ", release=" << release;
     std::cout << ss.str() << std::endl;
     logMessage(ss.str());
-    // Send to hardware...
+
+    // Waveform
+    QByteArray dataWave;
+    dataWave.append(static_cast<char>(0xB0));
+    dataWave.append(static_cast<char>(0x10));
+    dataWave.append(static_cast<char>(waveform));
+    QMetaObject::invokeMethod(sc, [=]() { sc->writeData(dataWave); }, Qt::QueuedConnection);
+
+    // Attack
+    QByteArray dataAttack;
+    dataAttack.append(static_cast<char>(0xB0));
+    dataAttack.append(static_cast<char>(0x11));
+    dataAttack.append(static_cast<char>(attack));
+    QMetaObject::invokeMethod(sc, [=]() { sc->writeData(dataAttack); }, Qt::QueuedConnection);
+
+    // Decay
+    QByteArray dataDecay;
+    dataDecay.append(static_cast<char>(0xB0));
+    dataDecay.append(static_cast<char>(0x12));
+    dataDecay.append(static_cast<char>(decay));
+    QMetaObject::invokeMethod(sc, [=]() { sc->writeData(dataDecay); }, Qt::QueuedConnection);
+
+    // Sustain
+    QByteArray dataSustain;
+    dataSustain.append(static_cast<char>(0xB0));
+    dataSustain.append(static_cast<char>(0x13));
+    dataSustain.append(static_cast<char>(sustain));
+    QMetaObject::invokeMethod(sc, [=]() { sc->writeData(dataSustain); }, Qt::QueuedConnection);
+
+    // Release
+    QByteArray dataRelease;
+    dataRelease.append(static_cast<char>(0xB0));
+    dataRelease.append(static_cast<char>(0x14));
+    dataRelease.append(static_cast<char>(release));
+    QMetaObject::invokeMethod(sc, [=]() { sc->writeData(dataRelease); }, Qt::QueuedConnection);
 }
 
 void SynthService::updateAll(const ClientState& state) {
@@ -77,7 +160,7 @@ void SynthService::updateAll(const ClientState& state) {
 void SynthService::receiveLoop() {
     zmq::message_t msg;
     while (true) {
-        receiver.recv(msg);
+        receiver.recv(&msg);
         std::string data(static_cast<char*>(msg.data()), msg.size());
 
         if (data.find("pynqsynth@synth.log!>") == 0

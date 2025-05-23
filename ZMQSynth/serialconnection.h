@@ -18,7 +18,7 @@ public:
     qint64 bytesToWrite = 0;
 
     SerialConnection();
-    void openSerialPort(QString portName, int baudRate);
+    void openSerialPort( int baudRate);
     void closeSerialPort();
     void writeData(const QByteArray &data);
     void handleBytesWritten(qint64 bytes);

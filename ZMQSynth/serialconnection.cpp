@@ -7,8 +7,19 @@ SerialConnection::SerialConnection()
 
 }
 
-void SerialConnection::openSerialPort(QString portName, int baudRate)
+void SerialConnection::openSerialPort(int baudRate)
 {
+
+    QString portName;
+
+    #if defined(Q_OS_WIN)  // For Windows
+        portName = "COM4";
+    #elif defined(Q_OS_LINUX)  // For Linux (e.g., Raspberry Pi)
+        portName = "/dev/ttyUSB1";  // Adjust this based on your setup (ttyUSB1, etc.)
+    #else
+        portName = "";  // Set a default or handle other platforms
+    #endif
+
     sp = new QSerialPort();
     sp->setPortName(portName);
     sp->setBaudRate(baudRate);

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <QThread>
+#include "serialconnection.h"
 
 struct ClientState {
     int instrument = 0;
@@ -23,7 +24,6 @@ public:
     SynthService(bool localMode);
 
     void receiveLoop();
-    void heartbeat();
 
     void logMessage(const std::string& msg);
     void sendError(const std::string& errMsg);
@@ -45,7 +45,8 @@ private:
     std::unordered_map<std::string, ClientState> clientStates;
     std::string lastClient;
 
-    // Add other members/methods as needed
+    SerialConnection * sc;
+
 };
 
 #endif
