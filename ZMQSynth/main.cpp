@@ -35,7 +35,7 @@ std::string ladress2 = "tcp://127.0.0.1:24042";
 zmq::socket_t* logSocket = nullptr;
 
 void logMessage(const std::string& msg) {
-    std::string formatted = "synth.log!>" + msg;
+    std::string formatted = "pynqsynth@synth.log!>" + msg;
     zmq::message_t message(formatted.begin(), formatted.end());
     logSocket->send(message);
 }
@@ -189,7 +189,7 @@ void heartbeat(zmq::context_t& context) {
     zmq::socket_t sender(context, local ? ZMQ_PUB : ZMQ_PUSH);
     if (local) sender.bind(ladress1); else sender.connect(adress1);
     while (true) {
-        std::string msg = "status.reply!>alive";
+        std::string msg = "pynqsynth@status.reply!>alive";
         zmq::message_t message(msg.begin(), msg.end());
         sender.send(message);
         std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -233,14 +233,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Connected to Benternet at " << adress2 << std::endl;
     }
 
-    std::vector<std::string> topics = {
-        "note.play?>", "effect.change?>", "instrument.change?>",
-        "custom.instrument?>", "volume.set?>"
-    };
-
-    for (const auto& topic : topics) {
-        receiver.setsockopt(ZMQ_SUBSCRIBE, topic.c_str(), topic.size());
-    }
+    receiver.setsockopt(ZMQ_SUBSCRIBE, "pynqsynth@", 10);
 
     std::thread heartbeat_thread(heartbeat, std::ref(context));
     heartbeat_thread.detach();
@@ -272,37 +265,38 @@ int main(int argc, char *argv[]) {
         std::cout << "Received: " << data << std::endl;
         logMessage("Received: " + data);
 
-        auto sep = data.find("?>");
+        const std::string prefix = "pynqsynth@";
+        if (data.compare(0, prefix.size(), prefix) != 0) continue; // skip if no prefix
+
+        auto sep = data.find("?>", prefix.size());
         if (sep == std::string::npos) continue;
-        std::string cmd = data.substr(0, sep + 2);
+
+        std::string cmd = data.substr(prefix.size(), sep - prefix.size() + 2); // include '?>'
         std::string payload = data.substr(sep + 2);
         std::istringstream ss(payload);
 
-        if (cmd == "note.play?>")
-        {
+        if (cmd == "note.play?>") {
             int f, v, d;
             ss >> f >> v >> d;
             playNote(f, v, d);
         }
-        else if(cmd == "instrument.change?>")
-        {
+        else if (cmd == "instrument.change?>") {
             int d;
             ss >> d;
             switchInstrument(d);
         }
-        else if (cmd == "custom.instrument?>")
-        {
+        else if (cmd == "custom.instrument?>") {
             int w, a, d, s, r;
             ss >> w >> a >> d >> s >> r;
             customInstrument(w, a, d, s, r);
         }
-        else if(cmd == "effect.change?>")
-        {
+        else if (cmd == "effect.change?>") {
             int d;
             ss >> d;
             switchEffect(d);
         }
     }
+
 
     return app.exec();
 }

@@ -63,7 +63,7 @@ void init()
 void send_note(int state, int note, int velocity)
 {
     std::ostringstream ss;
-    ss << "note.play?>" << state << " " << note << " " << velocity;
+    ss << "pynqsynth@note.play?>" << state << " " << note << " " << velocity;
     std::string request = ss.str();
 
     zmq::message_t msg(request.begin(), request.end());
@@ -75,7 +75,7 @@ void send_note(int state, int note, int velocity)
 void switch_instrument(int instrument)
 {
     std::ostringstream ss;
-    ss << "instrument.change?>" << instrument;
+    ss << "pynqsynth@instrument.change?>" << instrument;
     std::string request = ss.str();
 
     zmq::message_t msg(request.begin(), request.end());
@@ -87,7 +87,7 @@ void switch_instrument(int instrument)
 void send_effect(int effect)
 {
     std::ostringstream ss;
-    ss << "effect.change?>" << effect;
+    ss << "pynqsynth@effect.change?>" << effect;
     std::string request = ss.str();
 
     zmq::message_t msg(request.begin(), request.end());
