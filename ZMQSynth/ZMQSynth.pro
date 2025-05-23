@@ -23,7 +23,9 @@ win32 {
 }
 
 SOURCES += main.cpp \
-    serialconnection.cpp
+    serialconnection.cpp \
+    synth.cpp
 
 HEADERS += \
-    serialconnection.h
+    serialconnection.h \
+    synth.h

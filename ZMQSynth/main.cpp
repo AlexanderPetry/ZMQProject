@@ -15,6 +15,7 @@
 #include <QDebug>
 
 #include "serialconnection.h"
+#include "synth.h"
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -22,7 +23,7 @@
 #include <windows.h>
 #define sleep(n)    Sleep(n)
 #endif
-
+/*
 SerialConnection *sc;
 
 bool local = 0;
@@ -212,11 +213,11 @@ void listSerialPorts()
             std::cout << "Serial number: " << port.serialNumber().toStdString()<< std::endl;
         }
     }
-}
+}*/
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
-
+/*
     listSerialPorts();
 
     zmq::context_t context(1);
@@ -302,7 +303,11 @@ int main(int argc, char *argv[]) {
             ss >> d;
             switchEffect(d);
         }
-    }
+    }*/
+
+    synth *s = new synth();
+    s->play();
+
 
 
     return app.exec();
