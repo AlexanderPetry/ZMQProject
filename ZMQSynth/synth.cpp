@@ -21,11 +21,11 @@ void synth::playNote(int status, int note, int velocity) {
 
     if(status == true)
     {
-        ss << "Note " << note << " down at velocity " << velocity;
+        ss << clientID << " - Note " << note << " down at velocity " << velocity;
     }
     else
     {
-        ss << "Note " << note << " up at velocity " << velocity;
+        ss << clientID << " - Note " << note << " up at velocity " << velocity;
     }
 
     data.append(static_cast<char>(status ? 0x90 : 0x80));
@@ -70,6 +70,25 @@ void synth::switchEffect(int effect) {
     data.append(static_cast<char>(effect));
 
     ss << effect;
+    std::cout << ss.str() << std::endl;
+    logMessage(ss.str());
+
+    QMetaObject::invokeMethod(sc, [=]() {
+        sc->writeData(data);
+    }, Qt::QueuedConnection);
+}
+
+void synth::setPan(int pan) {
+    std::ostringstream ss;
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+
+
+    data.append(static_cast<char>(0xB0));
+    data.append(static_cast<char>(0x16));
+    data.append(static_cast<char>(pan));
+
+    ss << pan;
     std::cout << ss.str() << std::endl;
     logMessage(ss.str());
 
@@ -158,6 +177,25 @@ void synth::customInstrument(int waveform, int attack, int decay, int sustain, i
     logMessage(ss.str());
 }
 
+void synth::syncClientState(const std::string &clientID) {
+    if (clients.find(clientID) == clients.end()) return;
+    client &c = clients[clientID];
+
+    switchInstrument(c.isntrument);
+    setPan(c.pan);
+    customInstrument(c.waveform, c.attack, c.decay, c.sustain, c.release);
+
+    std::cout << "Client [" << clientID << "] settings updated:\n"
+              << "  Instrument: " << c.isntrument << "\n"
+              << "  Pan: " << c.pan << "\n"
+              << "  Waveform: " << c.waveform << "\n"
+              << "  Attack: " << c.attack << "\n"
+              << "  Decay: " << c.decay << "\n"
+              << "  Sustain: " << c.sustain << "\n"
+              << "  Release: " << c.release << std::endl;
+}
+
+
 void synth::heartbeat(zmq::context_t &context) {
     zmq::socket_t sender(context, local ? ZMQ_PUB : ZMQ_PUSH);
     if (local) sender.bind(ladress1); else sender.connect(adress1);
@@ -234,13 +272,14 @@ void synth::play()
     while (true) {
         receiver.recv(&msg);
         std::string data(static_cast<char*>(msg.data()), msg.size());
-        std::cout << "Received: " << data << std::endl;
+
 
         if (data.find("pynqsynth@synth.log!>") == 0
             || data.find("pynqsynth@status.reply!>") == 0
             || data.find("pynqsynth@error.report?>") == 0) {
             continue;
-        }
+        } std::cout << "Received: " << data << std::endl;
+
 
         logMessage("Received: " + data);
 
@@ -255,6 +294,23 @@ void synth::play()
 
         std::string cmd = data.substr(prefix.size(), sep - prefix.size() + 2);
         std::string payload = data.substr(sep + 2);
+
+        client &c = clients[clientID];
+
+
+        if (payload.rfind('=', 0) == 0) {
+            auto second_eq = payload.find('=', 1);
+            if (second_eq != std::string::npos) {
+                std::string newClientID = payload.substr(1, second_eq - 1);
+                payload = payload.substr(second_eq + 1);
+
+                if (newClientID != currentClientID) {
+                    currentClientID = newClientID;
+                    clientID = newClientID;
+                    syncClientState(clientID);
+                }
+            }
+        }
         std::istringstream ss(payload);
 
         if (cmd == "note.play?>") {
@@ -271,6 +327,7 @@ void synth::play()
                 sendError("Invalid parameter for instrument.change: " + payload);
                 continue;
             }
+            c.isntrument = d;
             switchInstrument(d);
         }
         else if (cmd == "custom.instrument?>") {
@@ -279,6 +336,11 @@ void synth::play()
                 sendError("Invalid parameters for custom.instrument: " + payload);
                 continue;
             }
+            c.waveform = w;
+            c.attack = a;
+            c.decay = d;
+            c.sustain = s;
+            c.release = r;
             customInstrument(w, a, d, s, r);
         }
         else if (cmd == "effect.change?>") {
@@ -288,6 +350,15 @@ void synth::play()
                 continue;
             }
             switchEffect(d);
+        }
+        else if (cmd == "set.pan?>") {
+            int d;
+            if (!(ss >> d)) {
+                sendError("Invalid parameter for set.pan: " + payload);
+                continue;
+            }
+            c.pan = d;
+            setPan(d);
         }
         else {
             sendError("Unknown command: " + cmd);

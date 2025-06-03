@@ -18,6 +18,7 @@
 #include <QSlider>
 #include <QLabel>
 #include <QGroupBox>
+#include <QLineEdit>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -38,6 +39,8 @@ zmq::socket_t publisher(context,  local ? ZMQ_PUB : ZMQ_PUSH);
 zmq::socket_t receiver(context, ZMQ_SUB);
 
 int vel = 100;
+int pan = 0;
+std::string clientID = "jeff";
 
 void init()
 {
@@ -63,7 +66,7 @@ void init()
 void send_note(int state, int note, int velocity)
 {
     std::ostringstream ss;
-    ss << "pynqsynth@note.play?>" << state << " " << note << " " << velocity;
+    ss << "pynqsynth@note.play?>=" << clientID << "="<< state << " " << note << " " << velocity;
     std::string request = ss.str();
 
     zmq::message_t msg(request.begin(), request.end());
@@ -75,7 +78,7 @@ void send_note(int state, int note, int velocity)
 void switch_instrument(int instrument)
 {
     std::ostringstream ss;
-    ss << "pynqsynth@instrument.change?>" << instrument;
+    ss << "pynqsynth@instrument.change?>=" << clientID << "=" << instrument;
     std::string request = ss.str();
 
     zmq::message_t msg(request.begin(), request.end());
@@ -87,7 +90,19 @@ void switch_instrument(int instrument)
 void send_effect(int effect)
 {
     std::ostringstream ss;
-    ss << "pynqsynth@effect.change?>" << effect;
+    ss << "pynqsynth@effect.change?>=" << clientID << "="  << effect;
+    std::string request = ss.str();
+
+    zmq::message_t msg(request.begin(), request.end());
+    publisher.send(msg);
+    std::cout << "Sent request: " << request << std::endl;
+    sleep(1);
+}
+
+void set_pan(int pan)
+{
+    std::ostringstream ss;
+    ss << "pynqsynth@set.pan?>=" << clientID << "=" << pan;
     std::string request = ss.str();
 
     zmq::message_t msg(request.begin(), request.end());
@@ -119,6 +134,17 @@ int main(int argc, char **argv) {
     QVBoxLayout *mainLayout = new QVBoxLayout(&window);
 
 
+    QHBoxLayout *clientIDLayout = new QHBoxLayout();
+    QLabel *clientIDLabel = new QLabel("Client ID:");
+    QLineEdit *clientIDInput = new QLineEdit(QString::fromStdString(clientID));
+    clientIDLayout->addWidget(clientIDLabel);
+    clientIDLayout->addWidget(clientIDInput);
+    mainLayout->addLayout(clientIDLayout);
+
+    QObject::connect(clientIDInput, &QLineEdit::textChanged, [](const QString &text) {
+        clientID = text.toStdString();
+        qDebug() << "Client ID set to:" << text;
+    });
 
 
     //custom intrument
@@ -155,7 +181,7 @@ int main(int argc, char **argv) {
         int release = releaseSlider->value();
 
         std::ostringstream ss;
-        ss << "custom.instrument?>"
+        ss << "pynqsynth@custom.instrument?>=" << clientID << "="
            << waveform << " "
            << attack << " "
            << decay << " "
@@ -201,6 +227,22 @@ int main(int argc, char **argv) {
     QObject::connect(volumeSlider, &QSlider::valueChanged, [](int value) {
         vel = value;
         qDebug() << "Volume set to:" << vel;
+    });
+
+    // pan slider
+    QHBoxLayout *panLayout = new QHBoxLayout();
+    QLabel *panLabel = new QLabel("Pan:");
+    QSlider *panSlider = new QSlider(Qt::Horizontal);
+    panSlider->setRange(-100, 100);
+    panSlider->setValue(pan);
+    panLayout->addWidget(panLabel);
+    panLayout->addWidget(panSlider);
+    mainLayout->addLayout(panLayout);
+
+    QObject::connect(panSlider, &QSlider::valueChanged, [](int value) {
+        pan = value;
+        set_pan(pan);
+        qDebug() << "Pan set to:" << pan;
     });
 
     QWidget *piano = new QWidget();

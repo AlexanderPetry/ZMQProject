@@ -44,11 +44,31 @@ public:
     void playNote(int status, int note, int velocity);
     void switchInstrument(int instrument);
     void switchEffect(int effect);
+    void setPan(int pan);
     void customInstrument(int waveform, int attack, int decay, int sustain, int release);
+    void syncClientState(const std::string &clientID);
     void heartbeat(zmq::context_t& context);
     void listSerialPorts();
     void play();
     void sendError(const std::string &errMsg);
+
+    std::string clientID = "";
+    std::string currentClientID = "";
+
+    struct client{
+        std::string name;
+        int isntrument;
+        int volume;
+        int pan;
+        int waveform;
+        int attack;
+        int decay;
+        int sustain;
+        int release;
+    };
+
+    std::unordered_map<std::string, client> clients;
+
 };
 
 #endif // SYNTH_H
